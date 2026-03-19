@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "Expense": {
+      "title": "Expense",
+      "description": "Daily expense record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "amount", "category", "date"]
+    },
+    "BorrowLend": {
+      "title": "BorrowLend",
+      "description": "Borrow or lend record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "type": { "type": "string", "enum": ["borrow", "lend"] },
+        "personName": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "paid"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "type", "personName", "amount", "date", "status"]
+    },
+    "EMI": {
+      "title": "EMI",
+      "description": "EMI tracking record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "providerName": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "monthlyAmount": { "type": "number" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "number", "description": "Day of the month" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "providerName", "totalAmount", "monthlyAmount", "startDate", "dueDate", "status"]
+    },
+    "SIP": {
+      "title": "SIP",
+      "description": "Systematic Investment Plan record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "frequency": { "type": "string", "enum": ["monthly", "quarterly"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "nextDueDate": { "type": "number", "description": "Day of the month" },
+        "status": { "type": "string", "enum": ["active", "paused", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "amount", "frequency", "startDate", "nextDueDate", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile record",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["uid", "email", "displayName", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile information"
+    },
+    "/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "User's daily expenses"
+    },
+    "/borrows_lends/{recordId}": {
+      "schema": "BorrowLend",
+      "description": "User's borrow and lend records"
+    },
+    "/emis/{emiId}": {
+      "schema": "EMI",
+      "description": "User's EMI records"
+    },
+    "/sips/{sipId}": {
+      "schema": "SIP",
+      "description": "User's SIP investment records"
+    }
+  }
+}

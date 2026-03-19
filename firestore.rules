@@ -1,0 +1,215 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (required)
+    //   - photoURL: string (optional)
+    //   - role: string (required, 'admin' | 'user')
+    //
+    // Collection: expenses
+    // Document ID: {expenseId}
+    // Fields:
+    //   - uid: string (required)
+    //   - amount: number (required, positive)
+    //   - category: string (required)
+    //   - description: string (optional)
+    //   - date: string (required, ISO 8601)
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: borrows_lends
+    // Document ID: {recordId}
+    // Fields:
+    //   - uid: string (required)
+    //   - type: string (required, 'borrow' | 'lend')
+    //   - personName: string (required)
+    //   - amount: number (required, positive)
+    //   - date: string (required, ISO 8601)
+    //   - status: string (required, 'pending' | 'paid')
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: emis
+    // Document ID: {emiId}
+    // Fields:
+    //   - uid: string (required)
+    //   - providerName: string (required)
+    //   - totalAmount: number (required, positive)
+    //   - monthlyAmount: number (required, positive)
+    //   - startDate: string (required, ISO 8601)
+    //   - dueDate: number (required, 1-31)
+    //   - status: string (required, 'active' | 'completed')
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: sips
+    // Document ID: {sipId}
+    // Fields:
+    //   - uid: string (required)
+    //   - name: string (required)
+    //   - amount: number (required, positive)
+    //   - frequency: string (required, 'monthly' | 'quarterly')
+    //   - startDate: string (required, ISO 8601)
+    //   - nextDueDate: number (required, 1-31)
+    //   - status: string (required, 'active' | 'paused' | 'completed')
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ruturajnarvekar836@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role']) &&
+        data.uid == request.auth.uid &&
+        isValidEmail(data.email) &&
+        data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+        data.role in ['admin', 'user'];
+    }
+
+    function isValidExpense(data) {
+      return hasOnlyAllowedFields(['uid', 'amount', 'category', 'description', 'date', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.amount is number && data.amount > 0 &&
+        data.category is string && data.category.size() > 0 && data.category.size() < 50 &&
+        (!('description' in data) || (data.description is string && data.description.size() < 500)) &&
+        isValidDateString(data.date) &&
+        isValidDateString(data.createdAt);
+    }
+
+    function isValidBorrowLend(data) {
+      return hasOnlyAllowedFields(['uid', 'type', 'personName', 'amount', 'date', 'status', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.type in ['borrow', 'lend'] &&
+        data.personName is string && data.personName.size() > 0 && data.personName.size() < 100 &&
+        data.amount is number && data.amount > 0 &&
+        isValidDateString(data.date) &&
+        data.status in ['pending', 'paid'] &&
+        isValidDateString(data.createdAt);
+    }
+
+    function isValidEMI(data) {
+      return hasOnlyAllowedFields(['uid', 'providerName', 'totalAmount', 'monthlyAmount', 'startDate', 'dueDate', 'status', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.providerName is string && data.providerName.size() > 0 && data.providerName.size() < 100 &&
+        data.totalAmount is number && data.totalAmount > 0 &&
+        data.monthlyAmount is number && data.monthlyAmount > 0 &&
+        isValidDateString(data.startDate) &&
+        data.dueDate is number && data.dueDate >= 1 && data.dueDate <= 31 &&
+        data.status in ['active', 'completed'] &&
+        isValidDateString(data.createdAt);
+    }
+
+    function isValidSIP(data) {
+      return hasOnlyAllowedFields(['uid', 'name', 'amount', 'frequency', 'startDate', 'nextDueDate', 'status', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+        data.amount is number && data.amount > 0 &&
+        data.frequency in ['monthly', 'quarterly'] &&
+        isValidDateString(data.startDate) &&
+        data.nextDueDate is number && data.nextDueDate >= 1 && data.nextDueDate <= 31 &&
+        data.status in ['active', 'paused', 'completed'] &&
+        isValidDateString(data.createdAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && (isOwner(userId) || isAdmin()) && (request.resource.data.role == resource.data.role || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidExpense(request.resource.data);
+      allow update: if isAuthenticated() && isValidExpense(request.resource.data) && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /borrows_lends/{recordId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidBorrowLend(request.resource.data);
+      allow update: if isAuthenticated() && isValidBorrowLend(request.resource.data) && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /emis/{emiId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidEMI(request.resource.data);
+      allow update: if isAuthenticated() && isValidEMI(request.resource.data) && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /sips/{sipId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidSIP(request.resource.data);
+      allow update: if isAuthenticated() && isValidSIP(request.resource.data) && (isDocOwner() || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

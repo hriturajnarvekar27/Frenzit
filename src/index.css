@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-matte-black: #121212;
+  --color-charcoal: #1A1A1A;
+  --color-toxic-lime: #CCFF00;
+  --color-toxic-orange: #FF4D00;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-matte-black text-white font-sans antialiased;
+  }
+}
+
+.glass {
+  @apply bg-white/5 backdrop-blur-lg border border-white/10;
+}
+
+.pill-card {
+  @apply bg-charcoal rounded-[32px] border border-white/5 shadow-xl;
+}
